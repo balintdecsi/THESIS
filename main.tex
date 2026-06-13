@@ -1,0 +1,465 @@
+\documentclass[12pt,a4paper]{report}
+% Követelmények:
+% min. 30 oldal Mellékletek nélkül
+% határidő: május 16. 23:59
+
+\usepackage[left=3cm,right=2.5cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhead{}
+\fancyhead[L]{Patch-clamp automation overview and database system development}
+\usepackage{microtype}
+\usepackage[euler]{textgreek}
+\usepackage[hungarian,english]{babel}
+\usepackage[autostyle]{csquotes}
+\usepackage[backend=biber,sorting=none,backref=true]{biblatex}
+% using Times Roman as default font (times package is declared obsolete):
+\usepackage{newtxtext}
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
+\usepackage[labelsep=endash,textformat=period,font=small,labelfont=bf,margin=10pt]{caption}
+\usepackage[font=footnotesize,margin=5pt]{subcaption}
+\usepackage{nomencl}
+\makenomenclature
+
+\usepackage[colorlinks,linkcolor=black,citecolor=black,urlcolor=blue]{hyperref} % it has to be the last package to be imported
+
+% spacing:
+\linespread{1.5}
+
+\addbibresource{sampleThesisBalintD.bib}
+
+\title{Patch-clamp automation overview and database system development}
+\author{Bálint Décsi}
+\date{\today}
+
+\begin{document}
+
+\begin{titlepage}
+   \begin{center}
+        \vspace*{0.4cm}
+
+        {\Huge \textsc{University of Szeged}}
+
+        \vspace{0.66cm}
+        
+        {\Large Faculty of Science and Informatics}
+
+        \vspace{0.66cm}
+        
+        {\Large Department of Biotechnology}
+        
+        \vspace{2.33cm}
+        
+            
+        \vspace*{2.0cm}
+
+        {\LARGE \textbf{Patch-clamp automation overview and database system development}}
+        
+        \vspace{0.33cm}
+        
+        {\Large Thesis}
+        
+        \vfill
+        
+        {\Large \textbf{Bálint Décsi}}
+        
+        
+        {\large Molecular Bionics Engineering\\
+        BSc}
+
+        \vspace{1.5cm}
+
+        {\large
+        \begin{tabular}
+            {c@{\hspace{3cm}}c}
+            \multicolumn{2}{c}{\emph{Supervisors:}}\\
+            \bf{Krisztián Koós} & \bf{Gábor Rákhely, PhD}\\
+            Ph.D. student & Vice Head of Department\\
+            Peter Horvath Laboratory & Department of Biotechnology\\
+            Biological Research Center & University of Szeged
+        \end{tabular}
+        }
+        
+        \vspace{1cm}
+        
+        {\large 2020}
+   \end{center}
+\end{titlepage}
+
+\begin{abstract}
+My thesis aims to give a detailed overview of the evolution of patch-clamp automation techniques, focusing on recent developments in the last decade. The state-of-the-art researches in this field are structured on image-based solutions. Furthermore, I describe the plug-ins I developed for a patch-clamp automation software, which are designed to visualize data collected by the software and pipeline them into a database where it can be requested from later.
+
+\vspace{1cm}
+
+Keywords: patch-clamp, electrophysiology, automation, database
+\end{abstract}
+
+\nomenclature{$z$}{Vertical movement of the pipette in the brain}
+\nomenclature{$DIC$}{differential interference contrast}
+\nomenclature{$autopatcher$}{A robot capable of performing automated patch-clamping}
+\nomenclature{$SV$}{Solenoid valve}
+\nomenclature{$PV$}{Proportional valve}
+\nomenclature{$ATM$}{Atmospheric pressure}
+\nomenclature{$PID$}{Proportional-integral-derivative control algorithm}
+\nomenclature{$ROI$}{Region of interest}
+\nomenclature{$DIGAP$}{DIC image-guided patch-clamping system}
+\nomenclature{$UI$}{User interface}
+
+% run this command before printing nomenclature : 
+% makeindex sampleThesisBalintD.nlo -s nomencl.ist -o sampleThesisBalintD.nls
+\printnomenclature
+
+\setcounter{page}{2}
+
+\tableofcontents
+
+\chapter{Introduction}
+% what is electrophysiology and how the mammalian brain works:
+The mammalian brain's activity consists of ionic and electrical currents occurring between specialized cells called neurons. These stimuli start from one point of the membrane of these cells and propagate towards the regions where it can be transferred to the neighboring cell. On these sites (dendrites) the neuron's signal jumps to the subsequent neuron's axon in the form of chemical (by synaptic vesicles) or electrical synapse (through gap junction). In this way, the brain can perform computations that define one's behavior. Electrophysiology is the discipline of studying this neuronal activity measuring local field potentials, the flow of the stimulus through transmembrane ion channels, calcium spikes and action potentials.\par
+The greatest barrier in the performance of these measurements is the scale of the length of these currents regarding their time. They last no longer than milliseconds and for getting dependable information out of these signals, a very precise and advanced technique is necessary. Imaging methods and sensor proteins are not developed enough to be solely relied on, this is one of the reasons why patch-clamping is still the gold-standard technique for recording signals of neurons. The other reason is its relatively simple procedure. Furthermore, the previously mentioned methods can't be applied for depths of more than a few hundred microns, while patch-clamping is apt for reaching neurons in deeper brain regions, such as the thalamus.\par
+% starting from the main idea of patch clamping (Neher and Sakmann, 1976), what it is for and its relevance in neurobiology:
+The first reported appliance of patch-clamping was by Erwin Neher and Bert Sakmann in 1976. During their experiment they managed to measure ion currents on frog thigh muscle fibres. They lowered a fire-polished pipette of a diameter of 3--5~\textmu m onto the enzymatically cleaned membrane and held it pressed against the surface to form an electrical seal of 2--5~M\textOmega~\cite{neher1976}. By this way, it is possible to monitor the ionic current of even one transmembrane channel and get high-resolution data regarding the propagation of the stimulus. Later it was discovered that the quality of the recorded data can be improved by a slight suction in the pipette applied when it is held onto the membrane, forming a much higher seal, on the scale of gigaohms. This was baptized "gigaseal"~\cite{hamill1981} and is still referenced by that name.
+% describing configurations (whole-cell, etc.):
+By attaining this high magnitude of sealing, different patch-clamping configurations became achievable which were first communicated by Hamill et al.\ and can be seen in Fig.~\ref{fig:pcconfigs}.
+\begin{figure}
+    \centering
+    \includegraphics[height=.4\textheight]{patchclampconfigs.png}
+    \caption{Different configurations of cell-patching~\cite{hamill1981}}
+    \label{fig:pcconfigs}
+\end{figure}
+Once the pipette tip reached the cell surface, there are two ways to continue:
+\begin{itemize}
+    \item Going forward without alternating the pressure (\textit{p}) and measuring in cell-attached or inside-out state.
+    \item Applying suction and conduct the measurement towards whole-cell or outside-out configuration.
+\end{itemize}
+In the case of cell-attached and whole-cell patch-clamping, information corresponding to the whole cell can be received. This type of experiment has the advantages of not (dramatically) perturbing the body of the cell and being able to observe ion currents of different channels and thus estimating more complex living phenomena of the neuron in focus. The other two configurations are convenient for narrowing the study on one single ion channel. In these workflows a patch of membrane is ruptured from the membrane. The inside-out method, with the cytoplasmic membrane face exposed to the bath solution (the medium in which the cell can be found) and the outside-out method, with the extracellular membrane face exposed to the bath solution also have the advantage of being able to transport and then examine the ion channel in a separate environment.\par
+% image-guided in vitro:
+With these techniques, only cells with freely reachable membranes could be analyzed (i.e.\ in a culture dish). A few years later it was discovered that patch-clamping with certain yield can be performed in brain slices if previous cleaning of the surrounding tissue has been carried out. By this way, the chance of the clogging of pipette tips or false positives is reduced. The first image-guided patch-clamp research was completed in 1993 with differential interference contrast (DIC) optics and brain slices were used. With the microscopy image's feedback it became feasible to differentiate recordings from the soma and the dendrites~\cite{stuart1993}.\par
+% in vivo patching:
+At the same time, advances in in vivo patching were emerging. These are mostly experiments involving living smaller rodents, often during their awake activity. To achieve this, head fixation is a key step, as patch-clamp measurements need a kinetically stable microenviroment. This evolution solved a few problems relating in vitro patching, which is, on the other hand, can be performed on bigger mammals, like cats. When using brain slices in an in vitro setup, although synaptic connections remain intact, only individual neurons or smaller local circuits can be observed. This was a big barrier on the way towards understanding more complex brain functions, such as perception and memory and in vivo patch-clamping removed this barrier.\par
+% in vivo blind patching:
+The first successful in vivo patch-clamp measurement was in 1991 and was tested in the visual cortex of anesthetized cats~\cite{pel1991}. The success was shaded by the fact that the electrical seal was incomplete (50--150~M\textOmega), thus this experiment only showed that in vivo patching is possible and the demonstration of its real-life application arrived a decade later. In 2002 Margrie et al.\ achieved to get whole-cell recordings in the intact brain of awake, freely moving mice~\cite{margrie2002}. In in vivo investigations the pipette must be lowered in the brain with a positive \textit{p} present inside the tip in order to prevent clogging and blockage. Once the membrane has been reached (this is noticed by an increase in the pipette tip's resistance (\textit{R})) the gigasealing and break-in is performed as described previously. Nevertheless, in blind patching the target depth can be theoretically infinite, which is a great advantage. On the other side, it is impossible to narrow the blind fashioned experiments in specific cell types due to the fact that the pipette tip encounters neurons randomly. Also, this method is biased towards results from bigger, more robust cells (e.g.\ pyramidal cells).\par
+For further details on neuron morphology and wider appliance of the technique a solution for image-guided patch-clamp experiments was needed. To overcome the limitations of blind patching, two-photon laser microscopy technology was integrated with patch-clamping~\cite{margrie2003} and tested on fluorescently labelled brain cells of living transgenic mice. For the acquisition of the positions of the pipette tip and the target cell at the same time, the tip is filled with a dye with different emission spectrum from that of the cells. When the two image layers are stacked over each other by a computer, the relative position of the tip to the soma can be calculated (Fig.~\ref{fig:tptp}).
+\begin{figure}
+    \centering
+    \includegraphics{tptp.jpg}
+    \caption{Patch-clamping aided by dual-channel two-photon imaging~\cite{margrie2003}}
+    \label{fig:tptp}
+\end{figure}
+Disadvantages of in vivo image-guided patch-clamp methodology include:
+\begin{itemize}
+    \item lateral movements of the tip must be limited to avoid tissue damaging,
+    \item final steps of neuron hunting must be based on \textit{R} alteration because of the depth (max.\ 500~\textmu m) and thus the decrease in image resolution,
+    \item less yield than during blind analyses.
+\end{itemize}
+In spite of that, it has numerous advantages which are essential for cell-type characterization and to connect morphology and neuronal function. Moreover, with the constant evolution of imaging technologies, fluorescent tags and optogenetics the number of its constraints will decrease and the possible use cases of image-guided in vivo patch-clamping is and will be broadening.
+
+\chapter{Automated blind patching}
+% weak points of human-controlled patching -> leading to importance of automation and thus scaling:
+With the broadening of patch-clamping and the evolution of relating techniques, with emphasis on microscopy imaging, more and more results and advances from this area of study arose. Due to its cell-targeted usage like monitoring ion-channel-mediated events, physiological and molecular identification of cells and even manipulation of subcellular processes that define the behavior of these channels and molecules, it gained a central place in cell-type-specific neurobiology. Nevertheless, in the 2000's most of the published results from patch-clamp experiments came with a small yield and in reduced preparation, e.g.\ brain slices. This, on one hand, is the consequence of the fact that the performance of such experiment is labour-intensive and requires well-trained personnel. These experts have to control the pipette with \textmu m-precision, continuously change the preset values of pneumatic valves and contend with other equipment (cameras, reading values of pipette current and \textit{R})~\cite{desai2015}. On the other hand, a big portion of the experiments is still in vitro, which also contributes to distortion of results, as previously mentioned (neurons remain truncated, which prohibits the acquisition of network-dependent neural responses. It could be foreseen that the focus of the upcoming researches would be on in vivo experimenting and also that automatization of patch-clamping could solve several problems. It does not only ease the heavy load of tasks that is on the shoulders of experimenters by algorithmizing the simpler steps but also makes scaling of throughput possible.\par
+% fundamental steps of patch-clamping which can be put into an algorithm:
+This automation process can be seen in many methods in biology. There is a thesis that states that many techniques that evolve to be gold-standard tools in the biological sciences go through a period of transformation in which they become, at least to some degree, automated, in order to improve reproducibility, throughput and standardization~\cite{suk2019}. Patch-clamping is very often referenced as a gold-standard tool, thereby its automatization, as stated above, could be expected. There are several research groups who dedicated their attention and resources in the 2010's to the development of automated blind patch-clamp solutions. What can be observed as a common attribute of most of these investigations is the division of the whole process into four major, well-distinguishable steps (Fig.~\ref{fig:pcsteps}):
+\begin{enumerate}
+    \item "regional pipette localization", in which the pipette is rapidly lowered to a desired depth under positive \textit{p},
+    \item "neuron hunting", in which the pipette is advanced more slowly at lower \textit{p} until a neuron is detected, as reflected by a specific temporal sequence of electrode impedance changes,
+    \item "gigaseal formation", in which the pipette is hyperpolarized and suction applied to create the gigaseal,
+    \item "break-in", in which a brief voltage (\textit{U})  pulse is applied to the cell to establish the whole-cell state.
+\end{enumerate}
+\begin{figure}
+    \centering
+    \includegraphics[width=.9\textwidth]{pcsteps.png}
+    \caption{The four steps of blind patch-clamping as a skeleton for algorithms~\cite{kodandaramaiah2012}}
+    \label{fig:pcsteps}
+\end{figure}
+
+\section{Methods}
+% some intro:
+The first article that reports in detail a functional automated blind patching algorithm and the hardware which it controls was that of Suhasa B.\ Kodandaramaiah et al., from 2012. They consequently named the robot "autopatcher"~\cite{kodandaramaiah2012}. The main feature of this hardware setup is to divide the patching process into the four previously mentioned stages with certain \textit{p} and \textit{R} values as entry and exit criteria of these stages, with feedback system and loops. Once the break-in is successfully achieved, the ion flow measurement can start. This basic algorithm is common in several articles of the topic which were published throughout the decade.
+
+\subsection{Flowchart overview}
+\textit{p} and \textit{R} are picked as criteria dimensions because of the characteristics of the neuron hunting, gigaseal formation and break-in, which are as follows:
+\begin{itemize}
+    \item when lowering the pipette in the brain tissue, a small positive \textit{p} is applied to keep the tip clean by constantly ejecting liquid (usually intracellular solution),
+    \item to detect cells, pulses of electricity are delivered which diffuse in the interstitial fluid if no neuron is present in the tip's proximity,
+    \item if a membrane is reached, it blocks the flow of electricity and \textit{R} increases,
+    \item the motion of the pipette is stopped and with a light suction (negative \textit{p}) the tip gets sealed onto the membrane.
+\end{itemize}
+\par
+The autopatcher robot is capable of recognizing these events reacting to them with minimum human intervention to get whole-cell experiment data. Its algorithm can be summarised in the flowchart in Fig~\ref{fig:flowchart}, communicated by Niraj S.\ Desai et al.\ in 2015~\cite{desai2015}.
+\begin{figure}
+    \centering
+    \includegraphics[height=0.8\textheight]{flowchart.jpg}
+    \caption{Algorithm that controls pipette lowering. The symbols P, R, and \textDelta z refer to the pressure applied to the electrode (in psi), the measured tip resistance (in M\textOmega), and incremental movement down into the brain (in \textmu m), respectively~\cite{desai2015}}
+    \label{fig:flowchart}
+\end{figure}
+
+\subsection{Motion control}
+We can declare that this component of the robot is fundamental, as this is the one that positions the pipette tip onto the membrane surface. Usually the stepper motor is preset to 200~\textmu m downwards per step, which is the initial setup once the dura mater (one of the three meninges of the brain) has been penetrated, but the alteration of its value and direction upon R-related events is often programmed into the algorithms. This value drops to 2~\textmu m during neuron hunting (or "SEARCH", in Fig.~\ref{fig:flowchart}). As stated in \cite{desai2015}, the part which is still quite complicated to automatize is lowering the pipette into the craniotomy, therefore steps involved in this movement---which are reaching the dura mater and setting initial point for \textit{z}---are excluded from the algorithm.
+
+\subsection{Resistance monitoring}
+Resistance monitoring or more generally electrode signal analysis is extremely important in blind patch-clamping since it is the only tool for detecting neurons and other "objects" in the brain, as microscopy image is absent. In other words, it is the only input for the algorithm to orient the pipette and thus \textit{p} and motion control depends on it. Its criteria values for the algorithm can be changed and adjusted, but the different research groups preset certain magnitudes for them in their own software to detect events during the patch-clamping.\par
+
+\subsubsection{Handling failures}
+First of all, once having penetrated the dura mater, monitoring \textit{R} is used for detecting failure events, i.e.\ clogging or breakage of the pipette. The first can be deduced from an increase above a certain value (9~M\textOmega{} in \cite{desai2015}, but 20~M\textOmega{} in \cite{li2017}), while the latter is marked by a drop below 3~M\textOmega{} (identical in most of the articles). Upon signs of breakage, the pipette must be withdrawn as quickly as possible to prevent the spewing of the K-rich intracellular liquid, which is filled inside the pipette, into the brain (because this has a dramatically different composition of the one in interstitial compartment). This feedback feature for identifying these events is present in all of the stages until break-in, as can be seen in Fig.~\ref{fig:flowchart}.
+
+\subsubsection{Neuron hunting}
+To find a neuron, i.e.\ in the "neuron hunting" stage (or "SEARCH", in Fig.~\ref{fig:flowchart}), the proportion of \textit{R}'s variation in comparison with the previously measured baseline is checked. If it is above 25\%, its reproducibility is verified by several back-and-forward movements of the tip.
+
+\subsubsection{Sealing and break-in}
+If the response is positive, the sealing can be started with \textit{p} and \textit{U} pulses and \textit{R} is examined whether it has risen above 1000~M\textOmega{} and the gigaseal is formed, or not. Finally, the rupture of the membrane ("break-in") is confirmed if \textit{R} drops below 300~M\textOmega, and usually this is the point when the automation algorithm stops and gives the control fully back to human supervision.
+
+\subsection{Regulating pressure}
+Setting the right pressure values is essential because this is the tool for triggering several key events during the process. Its value ranges mostly between -150~mbar and 800~mbar, albeit exact quantities used in different research groups and publication years vary. The main reason for this is that each experimenter has to choose between higher \textit{p} during pipette localization with less chance of clogging, or lower \textit{p} with less chance of harming the tissue (but greater risk of clogging). The tuning of \textit{p} is possible with a positive and negative source, values around ±690~mbar, as in \cite{desai2015}. The logical workflow of the control system is not very complicated and can be easily overviewed in Fig.~\ref{subfig:pFeedbackA}.
+\begin{figure}
+    \centering
+    \subcaptionbox{A schematic of the basic design. SV, solenoid valve; PV, proportional valve; P, pressure monitor; ATM, atmospheric pressure; PID, proportional-integral-derivative control algorithm; + and -, positive and negative pressure sources (10~psi) \label{subfig:pFeedbackA}}{\includegraphics[width=.45\textwidth]{images/pFeedbackA.jpg}}
+    \subcaptionbox{An example of the speed and accuracy of pressure control given by the regulator. Typical pressures for different steps in the in vivo patching process are labeled \label{subfig:pFeedbackB}}{\includegraphics[width=.45\textwidth]{images/pFeedbackB.jpg}}
+    \caption{Pressure regulation~\cite{desai2015}}
+    \label{fig:pFeedback}
+\end{figure}
+The first solenoid valve determines whether positive or negative \textit{p} would be applied. The proportional valve cuts down the magnitude of \textit{p} at its output. The second solenoid valve determines whether this \textit{p} or atmospheric \textit{p} would be piped into the pipette. An electronic \textit{p} monitor measures the "P" output of the proportional valve and sends this number to a microcontroller ("FEEDBACK"), which compares it with the desired \textit{p} specified by the proper software ("SET") and calculates an error equal to their difference. In overall, positive \textit{p} is used to keep the tip clean while negative \textit{p} is used for gigaohm sealing and for break-in (where \textit{U} pulses are also needed). Moreover, the implementation of this algorithm worked really well as can be seen in Fig.~\ref{subfig:pFeedbackB}, where the value set for \textit{p} (by the software, blue) and the measured feedback value (red) does not differ throughout the experiment. This is partly due to the low temporal response secured by the PID algorithm. As with \textit{R}, to understand the logical mechanism is easier if illustrated through the means of failure-handling, neuron hunting and behaviour in neuron proximity.
+
+\subsubsection{Handling failures}
+Penetrating the dura (280~mbar) and then starting regional pipette localization (70~mbar) is quite straightforward. When clogging is detected from \textit{R} alteration, an attempt to flush the pipette clean by application of high \textit{p} (around 300~mbar) during 2--5~s is triggered. When the software signals the breaking of the tip, \textit{p} must be reduced to 0 while pulling out the pipette to avoid the above mentioned leakage of intracellular solution.
+
+\subsubsection{Neuron hunting}
+Similarly to \textit{R}, failure spotting remains active until a neuron membrane has been found. Otherwise, lowering movement continues with \textit{p} as low as possible. Desai et al.\ has found, during testing their methods in brain slices, that the dependence of \textit{R} on proximity to a cell membrane is very sensitive to the value of p~\cite{desai2015}. During blind patching it is crucial to keep this dependency as strong as possible. This is completed by a minimum value of \textit{p} for keeping the tip clean, which was found to be as low as 15~mbar. Here I consider it important to mention that this same group discovered that the mentioned dependence is also sensitive to the distance between the tip and the center of mass of the neuron. The closer they are, the change of \textit{R} is steeper and thus more reliable. This correlation can be used to elaborate a heatmap and by this way visualize the contour and even the center of mass of the cell in focus. As can be seen in Fig~\ref{fig:heatmap}, the center of mass is the area which is made up of points that give maximal \textit{R} changes and the ones at which experienced electrophysiologists would choose to place patch electrodes.
+\begin{figure}
+    \centering
+    \includegraphics[width=.9\textwidth]{heatmap.jpeg}
+    \caption{Validating the automated patch system in vitro. The photograph on the left shows the soma of a layer 2/3 neuron (scale bar: 5~\textmu m). The heatmap on the right shows the maximum \textit{R} change (in percent, 10× linear interpolation) elicited by moving a patch electrode down at different x–y positions~\cite{desai2015}}
+    \label{fig:heatmap}
+\end{figure}
+
+\subsubsection{Sealing and break-in}
+After neuron detection, \textit{p} is set to -28~mbar and \textit{U} is ramped down from 0 to -70~mV over 10~s. The suction is held until 90~s has elapsed or the gigaseal has formed. To rupture the membrane (which is marked by a fast drop in \textit{R}) and exit the algorithm, pulses of -140~mbar with duration of 1~s are applied.
+
+\chapter{Automated image-guided patching}
+
+\section{Challenges}
+After the first blind fashioned (\textit{R}-based) automated solutions for patch-clamping, new emerging researches aimed to broaden the features of the recently created experimental set-ups with visual guidance. These projects have to face challenges which cannot be solved without an automated microscopy image-feedback. On one hand, several disadvantages of blind patching had to be improved: they are strongly biased towards bigger, more robust cell-types such as pyramidal neurons~\cite{long2015}. As experiments evolve in the direction of cell-type specificity and revealing function-morphology connections, blind patching, where the experimenter, during neuron hunting, is solely dependent on \textit{R}, has become more and more inappropriate. On the other hand, inconveniences of manual measurements, like making the results difficult to replicate among laboratories or investigators, are present in image-guided patching as well. First, approximate the pipette to the target cell requires close attention and in the meanwhile controlling the micromanipulators with visual feedback is impossible without high expertise. Second, lateral (off-axial) movements of the pipette must be minimized due to the fact that these can mechanically---and, also, optically---deform the target and neighboring cells. Similarly, setting \textit{p} with mouth or a syringe during controlling a hardware setup with visual input is even more labour-intensive and tedious than during a blind experiment. Finally, one must always try to maximize efficiency and robustness of the experiment because a high number of insertions can lead to inflammation or edema, which result in unfavorable conditions. These circumstances made it important to find a solution for the automation of image-guided patch-clamping.
+
+\section{Image acquisition and analysis}
+
+\subsection{Two-photon excitation microscopy}
+
+\subsubsection{How to benefit from different spectra}
+Two-photon excitation microscopy (TPEF, 2PEF, or two-photon (2p-) microscopy) is an imaging method based on injection of fluorescent dyes. It differs from conventional fluorescence microscopy, in which the exciting photons' wavelength is shorter than the emission wavelength. Contrarily, in TPEF at least two photons are absorbed and so their wavelength is longer than the emitting photon (Fig.~\ref{fig:tpem}).
+\begin{figure}
+    \centering
+    \includegraphics[height=.3\textheight]{tpem.jpg}
+    \caption{Comparison of the Jabłoński diagrams of single- and two-photon excitation~\cite{jablonksi}}
+    \label{fig:tpem}
+\end{figure}
+In this manner, near-infrared photons can be used with the advantage of less scattering in the tissue which enables low background signal and increased penetration depth. These attributes make it really valuable for patch-clamping, especially when penetrating into deeper brain regions, like thalamus or hippocampus. On the other side, the technique needs preceding introduction of fluorescent dyes or proteins, which physically disturbs the cell's membrane and cytoplasm. In case of dyes, this harmful effect is due to the penetration of pipette through the membrane, while the genes encoding the specific proteins are incorporated via electroporation and usage of plasmids. In automated patch-clamping, to be able to differentiate the pipette tip from the cell, each of them must have distinct emission spectra. The most common types of substances used by different research groups are Alexa family dyes and tdTomato and EGFP proteins for cells (red)~\cite{long2015},~\cite{annecchino2017}. It is important that the two emission spectra have well-separated peaks, as demonstrated in Fig.~\ref{fig:spectra}, so the segmentation of the objects and definition of regions of interest (ROIs) will become an easier task.\par
+\begin{figure}
+    \centering
+    \includegraphics[width=.9\textwidth]{spectra.png}
+    \caption{Emission spectra often used in two-photon targeted patching (x-axis: wavelength [\textlambda], y-axis: transmission)~\cite{spectra}}
+    \label{fig:spectra}
+\end{figure}
+
+\subsubsection{Image analysis techniques}
+Once the software has received images of the focus area, quantitative information must be acquired from it. This data usually includes contour, area, center of mass, bounding box and contrast level and then used for tracking the fluorescent objects in space and time and subsequently adjusting the trajectory and dynamics of pipette navigation. These image frames are usually saved in RGB format. This image type is often referred to as "truecolor", and it is stored, in the case of an image with a size of m×n pixels, as an m-by-n-by-3 data array that defines red, green and blue color components for each pixel (hence the name RGB). Taking the microscopy image from Fig.~\ref{fig:tptp} as an example , its data structure representation with the different channels ("Red", "Green", "Blue") can be seen in the upper part of Fig.~\ref{fig:rgb}.
+\begin{figure}
+    \centering
+    \includegraphics[width=.9\textwidth]{rgb.png}
+    \caption{Schematic image segmentation on a truecolor image. Top: Array structure of the RGB format. Bottom: Segmentation steps on two different channels}
+    \label{fig:rgb}
+\end{figure}
+To define the ROIs, first the image has to be splitted into three arrays, of which each one is for one color. In these arrays, each data point represents the intensity of the pixel of the same position on the screen (the higher the value, the brighter the pixel). If knowing the emission peak of the important objects in the image (in the example it is 510~nm for the cells and 594~nm for the tip) the corresponding channels can be picked. Once a color channel has been picked, the color is no longer needed and the pixels' values can be connected to a scale of shades of grey where minimum and maximum possible values correspond to black and white. These images are called "greyscale" images. There is much noise in these images, so the next step is decreasing the noise ratio. One of the methods to do this is called thresholding, during which a threshold is calculated based on the images's intensity histogram to remove most of the noise but at the same time not to reduce ROIs area or alter their contour. A gold-standard algorithm is \textit{Otsu's method}, which gives back a value for the threshold. For further simplification, the image is binarized, i.e.\ setting each cell of the array to 0 (if it is below the threshold) or 1 (if it is above the threshold). After this, small unimportant areas are subtracted and the final masks, which can then be passed to further algorithms, are left on the binary image.
+
+\subsubsection{Workflow to approach the cell}
+% Long et al.:
+The first research group that presents a solution to enable autopositioning of patch-clamp electrode to the target cell, from 2015, uses single-click virtual finger technology for initial localization~\cite{long2015}. When the tip is above the brain surface, a z-stack (series of images with the same frame, but located in subsequent positions along a vertical z-axis) is collected and after 3D rendering the user has to choose the tip and target cell location. Once it is done, the trajectory is calculated and the pipette is moved to the cell by the stepper motors controlled by the algorithm. When the tip is in close proximity to the cell, the system acquires another substack and performs image segmentation on it to achieve automatic detection of the needed objects. As described in the paper published by the group, they use noise reduction by first subtracting minimum intensity from all pixels and then normalizing intensity values to the range 5th percentile--98th percentile. The thresholding defaults to 90\% of maximum intensity value. Once the stack is binarized, the tip is defined as the largest object with greater than 10 pixels. The cell is detected with similar method, and then the trajectory is composed by its lateral and vertical vectors.
+% Anecchino et al. and Suk et al.:
+As it can be seen, the process yet requires human intervention, but the full automation of the whole process was accomplished two years later simultaneously by two groups, namely Luca A.\ Anecchino et al.\ and H.\ J.\ Suk et al.~\cite{annecchino2017}, \cite{suk2017}. For reproducibility, the hardware setups of these groups are built on commercial two-photon microscopes and utilize custom-built \textit{p} controller. Major improvement of these solutions is that they compensate for the movement of the target cell while navigating the electrode towards it. It is also important to mention that these systems work in in vivo experiments. They developed a closed-loop real-time imaging strategy in which the target cell location is continuously updated and the pipette trajectory is subsequently adjusted to achieve accurate positioning of the pipette tip onto the target cell. To minimize movement of the target cell between frames, the electrode insertion speed must also be lowered, as observed in~\cite{annecchino2017}. After the trajectory calculation, the pipette is moved in steps of 3--4~\textmu m. First it must be positioned in the transverse plane above the cell centroid. Then it is lowered along the z-axis with tissue harming kept at a minimum. These systems, due to their image feedback, helped scientists with morphology-specific patch-clamping and record signals of several cell types, such as Purkinje cells, cortical pyramidal neurons and astrocytes alongside with neurons expressing certain previously inserted genes. This opened a gate to more targeted investigations involving two-photon targeted patch-clamp.
+
+\subsection{Differential interference contrast microscopy}
+
+\subsubsection{Image reconstruction}
+The other microscopy technique which is often used in neurobiology is differential interference contrast (DIC) microscopy. It enables examination of deep regions in the brain tissue and it is non-invasive, as there is no need for fluorescent dye or protein and other contrast substances. Also, it has low phototoxicity which also contributes to its wide popularity in live tissue-imaging. DIC and, in general, label-free microscopy (i.e.\ without the injection of materials used for labelling cells and other objects) produces images which are more challenging to analyze than fluorescent images. There are solutions for this problem which offer a processing algorithm that converts DIC images into a form which is more amenable for standard computerized image interpretation. Although the exact detailing of the algorithm is out of the focus of the present thesis work, an example can be seen in Fig.~\ref{fig:reconstr}.
+\begin{figure}
+    \centering
+    \includegraphics[width=.9\textwidth]{reconstruction.png}
+        \caption{DIC image of Chinese Hamster Ovary cell culture and its corresponding reconstruction~\cite{koos2016}}
+    \label{fig:reconstr}
+\end{figure}
+Our research group in the Biological Research Center in Szeged has previously developed an algorithm which is capable of reconstructing a DIC image as a greyscale image similar to those which can be passed to a conventional two-photon image processing step~\cite{koos2016}. By this, the ROIs can be defined with methods already known worldwide.
+
+\subsubsection{Workflow to approach the cell}
+The mentioned reconstruction algorithm was built in a more complex system, named \textit{DIGAP} (DIC image-guided patch-clamping system)~\cite{koos2020}. The software and the experiment hardware setup which it controls offer solutions for fully automated deep learning driven patching performed in brain slices. It also involves a novel strategy for pipette detection published in 2017~\cite{koos2017}. The \textit{Pipette Hunter} finds the sides of the pipette by fitting rectangles with a common reference point and an orientation to dark image regions. For cell detection, a deep learning model was generated with a training set of more than 30000 labeled objects and is capable of:
+\begin{itemize}
+    \item detecting cells in unstained, label-free living neocortical tissue,
+    \item dodging obstacles, i.e.\ making attempts to make alternative trajectories around them,
+    \item tracking movements of the target cell in the lateral plane,
+    \item tracking movements of the target cell in the vertical plane by obtaining a template image at the optimal focal depth at the beginning of the patching and then continuously calculating cell drift in z-axis.
+\end{itemize}
+Successful patchings of the DIGAP system without the need of intervention are performed with similar results to human-controlled patchings. This means that it offers a stable and reliable solution for scaling the attainment of useful information and throughput in neurobiology-related projects.
+
+\chapter{Data visualization and structuring of the DIGAP system}
+
+\section{"Patch Clamp Diary" plug-in}
+The DIGAP system's source code developed in our research group is made publicly available at \url{https://bitbucket.org/biomag/autopatcher}. I joined the group with the aim to make additions to the program. These plug-ins are mainly related to the software's log files and visualization of the data (both technical and electrophysiological). They can be accessed through the user interface (UI) to organize and visualize data stored in the system's diary folder.\par
+One of the plug-ins works as part of the "Patch Clamp Diary" application. One module in the application is designed to plot positions of the successful sealing events on an x-y plane. There was a need, pointed out by neurobiologists who use the system for their daily work, for connecting these positions with the data belonging to them. My task was to write code that creates this connection with a built-in click-on feature.
+The software is written in the \textsc{Matlab} programming language, thus it was evident to continue the work in it. The mentioned module reads the selected diary file and collects relevant information into a variable of the data type called structure array. This structure has elements that represent individual patch-clamp recordings and contain information on hunting, sealing and break-in timestamps, position, target depth or whether the recording was successful or not. By this way, the experimenter who interacts with the UI can receive both quantitative and qualitative information on and compare certain patch-clamping locations. For this, a callback function must be called when the user clicks on a data point on the plot. The function then checks which element in the structure array that exact position belongs to and opens a new window displaying the information already mentioned of the same element. A screenshot, as an example, can be seen in Fig.~\ref{fig:selectedprops}.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{selectedprops.png}
+    \caption{The plotted patch-clamp positions and information displayed by the SelectedTargetProperties function}
+    \label{fig:selectedprops}
+\end{figure}
+
+\section{Cell database}
+There was another task in which I took part related to the data logged by the DIGAP system. There was a need for a database to be created which would store cells as records and collects information related to each one of the cells from different datasets. To write an algorithm that solves this collection process was my aim. The code was written in \textsc{Matlab}. Data recorded and logged during automated patch-clamping was present in three datasets:
+\begin{itemize}
+    \item log files (.log extension), which contain information on image export timestamps,
+    \item images (.png extension), captured with individual cells in frame,
+    \item electrophysiological data (.mat extension), which was recorded during experiments the on target cells.
+\end{itemize}
+
+After we analyzed the existing datasets, we decided to structure a schema whose records would be the target cells, and in the fields associated with them the mentioned information would be organized. By this way, the future user will access grouped quantitative and qualitative data about each cell and can query the database when looking for specific phenotypic cells or needs to download images. The creation of an example entry, as of now, can be seen in Fig.~\ref{fig:mongoworkflow}.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\textwidth]{mongoworkflow.png}
+    \caption{Workflow demonstrating how a document, that represents one cell in MongoDB, is created}
+    \label{fig:mongoworkflow}
+\end{figure}
+In the "elphys" field, the exact information (stored in a .mat file) is queried through the filepath and index number. The images are sorted by patch-clamping stages, which means that "starting" phase appears as the 0th, and "break-in" appears as the last element in the "images" array. Image type and cell phenotype fields are reserved for future usage.\par
+The main difficulty to overcome was to compare timestamps of elements corresponding to the same cell and sort them correctly meanwhile the cell entities themselves were not defined in any of the datasets. They were generated based on the .log file with use of regular expressions on different levels. Regular expressions can be used to search for matches while iterating through each line of the text. The function I wrote searches for lines which report saving an image which captures a starting stage of the patch-clamping, like the following one:
+\begin{verbatim}
+2019-02-14 [...] - Logging image with name: 2019[...]VP_starting.png
+\end{verbatim}
+Once the algorithm gets the timestamp for the second starting event---i.e.\ the second entry in the future database---, it can iterate through the image folder and the file containing electrophysiology data and collect all the recordings that have occurred since the last starting event and link them to it.\par
+The final code block in the function pipelines the gathered data into a database. We chose to use MongoDB, which provides a document-based structure in opposition of relational database systems. Its advantages include variability between record's schema (which come handy when the raw data is not surely uniform) and the fact that is more convenient to store big amount of data (which is partly a consequence of its easy scalability).\par
+Source codes for both of the plug-ins can be accessed on my \href{https://github.com/balintdecsi/THESIS.git}{\textsf{GitHub} account's page}.
+
+\chapter{Future directions}
+Advances and overall evolution in the field of neuroscience has accelerated in the last decade. This tendency is possible in a big portion because of automated patch-clamping solutions. Its importance in experiments has gained more and more evidence and more and more laboratories see its positive effects on research outcome. Nevertheless, there are always clear directions to follow for the years to come. On one side, there are some tasks in the patch-clamping process whose automation cannot be standardized yet, for example cleaning patch-clamp pipettes or performing craniotomy. On the other side, multi-electrode patch-clamping is a necessary step to achieve even more reliable data and structure more robust databases from which new neuronal connections and functions can be deduced. Finding elements never discovered before in the brain is one the most trending application of path-clamping nowadays. Combination of patch-clamping with optogenetics is also a powerful tool. In the same way, with the spread of nanopipettes characteristics of the measurement will change that will bring new aspects into the direction of patch-clamping.
+
+\chapter*{Statement}
+
+I, Bálint Décsi, Molecular Bionics Engineering BSc student, hereby state that I have written my thesis at the Institute of Biotechnology, University of Szeged in order to acquire a BSc degree. I declare that I have not defended my thesis in other graduate program before, that it is completely written by me, and that I cited all of the sources I have used. I accept that my thesis will be placed in the library of Institute of Biotechnology, University of Szeged, in the section of locally available books.
+
+\vspace*{2cm}
+
+Szeged, \today \hfill Bálint Décsi \hspace*{2cm}
+
+\printbibliography
+
+\appendix
+
+\chapter{Summary in Hungarian}
+
+\selectlanguage{hungarian}
+
+\begin{center}
+    \vspace*{2cm}
+    {\LARGE Patch-clamp automatizáció áttekintése és adatbázis-rendszer fejlesztése}
+    \vspace*{1cm}
+\end{center}
+
+\section*{Kivonat}
+Dolgozatom célja az automatizált patch-clamp technika alakulásának részletes áttekintése korszerű módszerek bemutatásával, összpontosítva az elmúlt évtized legújabb fejleményeire. A legkorszerűbb kutatások ezen a területen kép-alapú megoldásokra épülnek. Ezenkívül leírom két általam tervezett, a kutatócsoportunkban fejlesztett patch-clamp szoftverhez kapcsolódó plug-int. Ezek lényegi funkciója a rendszer által összegyűjtött adatok megjelenítése és azok adatbázisba való feltöltése.
+
+\vspace{1cm}
+
+Kulcsszavak: patch-clamp, elektrofiziológia, automatizáció, adatbázis
+
+\section*{Bevezetés}
+Az emlősök agyának tevékenysége ionos és elektromos áramokból tevődik össze, amelyek speciális sejtek, úgynevezett neuronok közvetítésével zajlanak. Ezek az ingerek a neuronok membránjának egy pontjáról indulnak, majd tovaterjednek azon régiók felé, ahol a szomszédos sejtekkel való kapcsolat (szinapszis) létrejöhet. Ezeken a helyeken (dendritek) a ingerület a következő neuron axonjába ugrik kémiai (szinaptikus vezikulák segítségével) vagy elektromos szinapszis (\textit{gap junction} által) formájában. Ezekből a kapcsolatokból felépülő hálózatok határozzák meg az adott egyed viselkedését.\par
+Az idegsejtek mérésének legnagyobb akadálya ezen ingerületek lezajlási ideje. Ez legfeljebb ms-os nagyságrendbe esnek, így megbízható információ kinyeréséhez nagyon pontos és fejlett technika szükséges. A képalkotó módszerek és molekuláris biológiai eszközök nem fejlettek annyira, hogy csak rájuk támaszkodhassunk; ez az egyik oka annak, hogy a patch-clamp továbbra is a standard módszer az idegsejtek jeleinek méréséhez. Hatalmas előnye, hogy alkalmas az idegsejtek elérésére a mélyebb agyi régiókban, mint például a talamuszban is.\par
+Az első publikált patch-clamp berendezést Erwin Neher és Bert Sakmann alkotta meg 1976-ban. Kísérleteik során sikerült megmérniük béka combizomrostok működési áramait. A mérés során a membrán és egy 3--5~\textmu m átmérőjű pipetta hegye között  alakítottak ki 2--5 M\textOmega{} elektromos ellenállást (\textit{R})~\cite{neher1976}. Ilyen módon akár egy transzmembrán csatorna felbontású ionáram-méréseket lehet végrehajtani. Későbbi kutatások bebizonyították, hogy a felvett adatok minősége javítható a pipettában kifejtett enyhe szívóhatással. Így amikor a hegy a membránra illeszkedik, a szigetelés nagysárenddel nagyobb, G\textOmega{}-os tartományba fog esni. Ezt az állapotot \textit{gigaseal}nek keresztelték, mely elnevezés a mai napig használatos~\cite{hamill1981}. A szigetelés ilyen nagyságba emelésével különböző patch-clamp konfigurációkat fejleszthettek ki kutatók, mely konfigurációkat először Hamill et al.\ publikáltak; összefoglalásuk a \ref{fig:pcconfigs}~ábrán látható. Miután a pipetta hegye elérte a sejt felületét, a konfigurációk osztályozása szerint kétféle folyamat lehetséges:
+\begin{itemize}
+    \item folytatás a nyomás (\textit{p}) megváltoztatása nélkül és \textit{cell-attached} vagy \textit{inside-out} konfigurációban való mérés,
+    \item szívóhatás kifejtése és \textit{whole-cell} vagy \textit{outside-out} állapot elérése.
+\end{itemize}
+\textit{Cell-attached} és \textit{whole-cell} patch-clamp esetén az egész sejtre vonatkozó információ kapható. A másik kettő konfiguráció esetén a vizsgálat leszűkül egyetlen ioncsatornára. Utóbbi munkafolyamatok során a membránból egy darab elválasztásával lehet elérni a szükséges mérési állapotot.
+
+\section*{Automatizált \textit{blind} patch-clamping}
+A patch-clamphez kapcsolódó technikák (különös hangsúllyal a mikroszkópos képalkotásra) fejlődésével és bővülésével a tudományterületen egyre több eredmény és előrelépés született. A mai kutatások tekintetében a patch-clamp centrális szerepet tölt be a sejt-specifikus neurobiológiai kutatásokban. Ez többrétű alkalmazási lehetőségének köszönhető: ioncsatorna-közvetített események monitorozása, szubcelluláris folyamatok azonosítása és manipulálása. Mindazonáltal a 2000-es években a publikált eredmények többsége kevés előrelépésről számolt be és élő szervezeten még kevés kutatást hajtottak végre. Ez egyrészt annak tudható be, hogy a patch-clamp kísérletek igen munkaigényesek és nagyon jól képzett, tapasztalt személyzetet igényel. A mérést végrehajtó kutatónak a pipettát \textmu m-es pontossággal kell irányítania miközben párhuzamosan a pneumatikus szelepek állításával a \textit{p}-t is szabályoznia kell. Másrészt a kísérletek nagy része még mindig in vitro, ami eredmények torzulását okozhatja (idegi hálózatok megfigylésének korlátozása a neuronok csonkolása miatt). Előrelátható volt, hogy a közelgő kutatások az in vivo kísérletek és automatizálási megoldások irányába tereli a tudományágat.\par
+Ez az automatizálási folyamat a biológia valamennyi ágazatában jelen van: megfigyelhető egy paradigma, mely szerint sok olyan módszer, amely a biológiai tudományokban standard eszközzé válik, átesik bizonyos mértékű automatizálási folyamaton. Az elmúlt évtizedben számos kutatócsoport fordította figyelmét és erőforrásait automatizált \textit{blind} (vagyis mikroszkópos képi segítség nélküli) patch-clamp rendszerek kifejlesztésére. A megoldások nagy részének közös tulajdonsága a folyamat négy, jól elkülöníthető lépésre osztása: %ref pcsteps ábra
+\begin{enumerate}
+    \item \enquote{pipetta-lokalizáció}, mely során a pipetta viszonylag nagy sebességgel behatol a kívánt mélységig,
+    \item \enquote{neuron \textit{hunting}}, mely során a pipetta kis léptékben tovább hatol az agyban, amíg elér a célidegsejtig,
+    \item \enquote{\textit{gigaseal} kialakítása}, mely során a pipettát hiperpolarizálják és negatív \textit{p}-sal elérik az úgynevezett \textit{gigaseal} állapotot,
+    \item \enquote{\textit{break-in}}, mely során egy rövid feszültség (\textit{U})-impulzussal vagy vákuum pulzussal elérik a \textit{whole-cell} konfigurációt.
+\end{enumerate}
+
+\subsection*{Módszerek}
+Az első tudományos közlemény, amely atomatizált \textit{blind} patch-clamp megoldásról számol be, 2012-ben jelent meg Suhasa B.\ Kodandaramaiah et al.\ nevei alatt~\cite{kodandaramaiah2012}. Az általuk épített robot (\enquote{autopatcher}) fő funkciója a négy, már említett lépés felosztása és kontrollálása bizonyos \textit{p} és \textit{R}) be- és kimeneti értékekkel. A fázisok közötti kapcsolásokat egy visszajelzési rendszer és logikai ciklusok szabályozzák. Ez a megközelítés az évtized során több kutatócsoport megoldásában is fellelhető.
+
+\subsubsection*{Folyamatábra}
+Az algoritmus be- és kimeneti feltételei és \textit{p} és \textit{R} szabályozása az alábbiak szerint lett meghatározva:
+\begin{itemize}
+    \item a membránra való csatlakozásig a pipettában alacsony pozitív \textit{p} fenntartása szükséges, általában intracelluláris folyadék szivárogtatásával,
+    \item a sejtek észleléséhez a pipettába elektromos impulzusok vezetése szükséges, mely impulzusok, amennyiben nincs a hegy közelségében neuron, disszipálódnak az intersticiális folyadékban,
+    \item a neuron elérése esetén az elektromos áram blokkolódik és \textit{R} növekszik,
+    \item ekkor a pipetta nem hatol tovább és enyhe szívóhatással megtörténik a \textit{sealing}.
+\end{itemize}
+Az autopatcher robot minimális emberi beavatkozás mellett is képes felismerni és végrehajtani a fenti lépéseket . Az algoritmus sematikus ábrázolása a \ref{fig:flowchart}~ábrán látható.
+
+\subsubsection*{Pipettaléptetés szabályozása}
+Megállapíthatjuk, hogy a rendszer ezen modulja alapvető fontosságú, mivel ez közelíti a pipetta hegyét a membrán felületéhez. A léptetőmotor lépésköze általában 200 \textmu m-re van alaphelyzetben állítva, de értékének és irányának \textit{R} megváltozásának hatására való felülírását szintúgy végrehajtja az algoritmus. A lépésköz értéke 2 \textmu m-re esik a neuron \textit{hunting} alatt.
+
+\subsubsection*{Ellenálláson alapuló visszajelzés}
+Az elektródajelek elemzése, vagyis \textit{R} monitorozása rendkívül fontos a \textit{blind} patch-clamping során, mivel ez az egyetlen eszköz neuronok és akadályok észlelésére. Más szavakkal az algoritmusnak ez az egyetlen bemenete a pipettamozgatás irányításához.\par
+
+\subsubsection*{Nyomásszabályozás}
+A helyes nyomásérték beállítása elengedhetetlen, mivel a folyamat során számos kulcsesemény elindításának az eszköze. Értéke elsősorban a -150~mbar és 800~mbar közötti skálán mozog, habár a pontos értékek jelentős eltéréseket mutatnak a kutatócsoportok és a publikációik évei között. \textit{p} szabályozásához egy pozitív és egy negatív forrás (± 690 mbar) szükséges~\cite{desai2015}. A vezérlés logikai folyamatábrája a \ref{subfig:pFeedbackA}~ábrán látható. Az algoritmus implementálása jó eredménnyel történt (ld.\ \ref{subfig:pFeedbackB}~ábra): \textit{p}-ra a szoftver által beállított érték (kék) és a mért visszacsatolás (piros) értékei korrelálnak.
+
+\paragraph*{Hibakezelés}
+Amint megtörtént a dura mater áthatolása (280~mbar), az \textit{R}-on alapuló visszajelzés az alapja a hibaesemények (pipetta eltömődése vagy törése) észlelésének. Az előbbi az \textit{R} egy bizonyos érték (lehet 9~M\textOmega{}~\cite{desai2015}, vagy akár 20~M\textOmega{} is~\cite{li2017}) fölé való emelkedéséből, míg az utóbbi egy bizonyos érték (3~M\textOmega) alá való csökkenéséből vezethető le. Ezen események a mérés bármely szakaszában megjelenhetnek, amint az a \ref{fig:flowchart}~ábráról os leolvasható. Törés észlelésének esetén a \textit{p}-t 0-ra csökkenti a szoftver, elkerülendő a pipettában lévő intracelluláris folyadék agyi szövetbe való nagy emnnyiségű kijutása. Eltömődés esetén 2--5~s hosszú, magas \textit{p} (300~mbar) alkalmazásával megkísérli a szennyező anyag kimosását.
+
+\paragraph*{Neuron \textit{hunting}}
+Az idegsejt észleléséhez \textit{R} változásának az előzőleg beállított offsettől való eltérése a kulcs. Ha ez 25\%-nál nagyobb, a megismételhetősége ellenőrzésre kerül sorozatos hátra-előre mozgásokkal. Ezalatt a \textit{p} minimális értéken (15~mbar) tartása elengedhetetlen a \textit{gigaseal} sikeres kialakításához. 
+
+\paragraph*{\textit{Sealing} és \textit{break-in}}
+Ammennyiben az idegsejt jelenléte meg lett erősítve, elkezdődik a \textit{sealing}. Negatív \textit{p} (-28~mbar) és rövid \textit{U} impulzusok (0-ról -70~mV-ra, 10~s-ig) sorozata közben a program figyeli, hogy az \textit{R} 1000~M\textOmega{} fölé emelkedik-e és ezáltal kialakul-e a \textit{gigaseal}. Ennek bekövetkezte után a membrán felszakítását \textit{R} 300~M\textOmega{} alá esése jelenti. Az algoritmus ennek hatására lezárul és visszaadja az irányítást a kezelő személyzetnek.
+
+\section*{Képi visszacsatolású patch-clamp}
+
+\subsection*{Kihívások}
+A \textit{blind} patch-clamp technikára irányuló megoldások után új, a megalkotott rendszerek funkcióinak kibővítését vizuális visszacsatolással való megoldását célzó kutatások indultak néhány kutatócsoportban. A manuális \textit{blind} patch clamp által hátrahagyott megoldandó problémák számos kihívás elé állították a szakembereket: 
+\begin{itemize}
+    \item a \textit{blind} patch-clamp eredmények erősen eltolódnak a nagyobb, robosztusabb sejttípusok (pl. piramidális sejtek) irányába,
+    \item az idegsejt pipettával való megtalálása során a kutatók kizárólag \textit{R} változásaira vannak hagyatkozva,
+    \item a manuálisan irányított mérések eredményei nehezen reprodukálhatóak a rengeteg tényező miatt, amire a kísérlet során a személyzetnek figyelnie kell,
+    \item a elhúzódó neuron \textit{hunting} és sokszori behatolás gyulladást vagy ödémát okozhat.
+\end{itemize}
+
+\subsection*{Képalkotó technológiák}
+
+\subsubsection*{Kétfoton pásztázó mikroszkópia}
+Kétfoton pásztázó mikroszkópiás mérés folyamán közeli infravörös (NIR) fotonok segítségével gerjesztik a a fluoreszcens festékanyagot. A folyamat sematikus folyamata a \ref{fig:tpem}~ábra Jabłoński-diagramján látható. A módszer előnye, hogy a leképezésre használt fotonok kevésbé szóródnak, mint konvencionális fluoreszcens mikroszkópia esetén, ezáltal mélyebb rétegekben is kevésbé aberrált képek készíthetőek. Automatizált patch-clamp megvalósítása során a szoftvernek fel kell ismernie a pipettát és a célsejtet, mindezt a mikroszkópos kép alapján. Ehhez az előkészítés során különböző emissziós spektrummal rendelkező festékeket kell bejuttatni az említett objektumokba. Fontos, hogy a két spektrum jól elkülöníthető csúccsal rendelkezzen (mint ahogy a \ref{fig:spectra}~ábrán látható), mert ez az alapja a képen található objektumok szegmentációjának.
+
+\paragraph*{Képanalízis}
+Miután a szoftver megkapja a fókusz síkban készült képeket, a kvantitatív információ kinyerése következik. Ezek az adatok általában a objektum (esetünkben a célsejt) kontúrvonalát, területét, tömegközéppontját, \textit{bounding box}át (minimális határoló négyszög) tartalmazzák. Ezek a képek általában RGB formátumban kerülnek mentésre. Az RGB képek adatstruktúrája egy \textit{m}×\textit{n} pixel méretű kép esetén \textit{m}×\textit{n}×3 mátrixként fogható fel. Ezen mátrix 3 \enquote{rétege} a vörös, a zöld és a kék színt jeleníti meg. Így mindegyik pixel végső színe a három réteg értékéből tevődik össze. Ez látható a \ref{fig:rgb}~ábra felső részén is. Az emissziós csúcs ismeretében (a példaképen 510~nm a sejt, 594~nm a pipettahegy esetén) a hozzá tartozó szín rétegét külön lehet választani. A színcsatorna kiválasztása után a színre, mint kvalitatív információra nincs szükség, és a pixelek értékei összekapcsolhatók egy szürkeárnyalati skálával, ahol a lehetséges minimális és maximális értékek a feketének és a fehérnek felelnek meg. Ekkor kapjuk az úgynevezett szürkeárnyalatos képet. Ezután az intenzitási hisztogram alapján egy bizonyos küszöb alatti pixelek értékeit 0-ra, minden nagyobb intenzitású pixelt pedig 1-re állítunk. Ez a folyamat a küszöbölés, amelynek eredménye egy bináris kép. A kisterületű objektumok kiszűrésével megkapjuk a végső maszkokat, melyek alapján ki lehet számítani a pipetta útvonalát.
+
+\subsubsection*{Differenciál interferencia kontraszt (DIC) mikroszkópia}
+A másik, neurobiológiában gyakran alkalmazott mikroszkópos módszer a differenciál interferencia kontraszt (DIC) mikroszkópia. Előnye, hogy lehetővé teszi az agyszövet mély régióinak vizsgálatát, illetve non-invazív, mivel nincs szükség fluoreszcens festékre vagy fehérjére és egyéb kontraszt anyagok bejuttatására. Továbbá alacsony fototoxicitása is kedvező tulajdonság élő szöveti képalkotás tekintetében. Azonban a DIC képek elemzése nehezebb feladatnak bizonyul, mint fluoreszcens mikroszkópia esetében. Egyik megoldás az úgynevezett képrekonstrukció, mely módszer a DIC képeket a fluroeszcens felvételekből kapott képhez hasonlóra konvertálja. Bár az algoritmus pontos részletezése jelen dolgozat mélységén túlmutat, egy példa transzformáció a \ref{fig:reconstr}~ábrán látható. A Szegedi Biológiai Kutatóközpontban működő kutatócsoportunk is kidolgozott egy ilyen eljáráson alapuló automatizált patch-clamp rendszert~\cite{koos2020}. Ez a komplex DIGAP (DIC image-guided patch-clamping system) rendszer egy mély tanulással segített megoldást nyújt agyszeleteken véghez vitt kísérletek képi visszajelzésen alapuló automatizálásához. Az eddigi eredmények a manuális patch-clamp kísérletekkel megegyező hatásfokot mutatnak.
+
+\subsubsection*{Célsejt megközelítése}
+Mindkét képalkotási módszer esetén a legmodernebb eljárás a valós idejű követést megvalósító algoritmus implementálása. Minden esetben történik egy kezdeti felvétel, mikor az elektróda még nem hatolt be az agyi szövetbe. Ezt elemezve meghatározásra kerülnek a pipettahegyhez és a sejthez tartozó ROIk (\textit{regions of interest}). Ezután a szükséges pálya kiszámítását követően megkezdődik a pipetta mozgatása. Minden léptetés után frissül az útvonal, így követve a sejt esetleges mozgását vagy deformálását. Az agyi szövet károsodásának minimalizálása a lépésközök csökkentésével és a pipetta laterális mozgatásával érhető el. Amint a z-tengely mentén a pipetta megfelelő közelségben a sejt fölé került, megkezdődik a \textit{gigaseal} kialakítása és a \textit{whole-cell} állapot elérése.
+
+\section*{A DIGAP rendszer adatstruktúrája és -vizualizációja}
+
+\subsection*{\enquote{Patch Clamp Diary} plug-in}
+A DIGAP rendszer forráskódja elérhető kutatócsoportunk \href{https://bitbucket.org/biomag/autopatcher}{\textsf{Bitbucket} repozitóriumában}. A csoporthoz való csatlakozásom után ezen rendszer kiegészítőinek készítése volt elsődleges feladatom. Az általam fejlesztett plug-inek elsősorban a szoftver naplófájljait és az adatok (műszaki és elektrofiziológiai) feldolgozását és megjelenítését segítik. A modulokkal felhasználói felületen (UI) keresztül lehet kommunikálni. Az egyik beépülő modul a \enquote{Patch Clamp Diary} alkalmazás részeként hívható meg. Fő funkciója a mérések pozícióinak összekapcsolása a hozzájuk tartozó felvett értékekkel (mélység, mért \textit{R}, utolsó fázis, kiértékelés). Az adatok megjelenítését az x-y síkon ábrázolt pozíciókat egy kattintható interfésszel kiegészítő \textsc{Matlab} kóddal implementáltam. A kód a \enquote{Patch Clamp Diary} applikáció által összegyűjtött adatok mátrixában megkeresi és megjeleníti a kiválasztott pozíció méréséhez tartozó értékeket. A plug-in kvalitatív információkat nyújt a felhasználónak, mely segíti a mérések közötti összehasonlítást. Egy képernyőfelvétel, a UI ábrázolásaként, a \ref{fig:selectedprops}~ábrán látható.
+
+\subsection*{Sejt adatbázis}
+A DIGAP rendszer naplózórendszeréhez kapcsolódó másik projekt, amelyben részt vettem, egy adatbázis megtervezését és létrehozását tűzte ki célul. Neurobiológusok jelezték az igényt egy olyan szerverre, ahonnan sejtekről, mint adatbázisrekordokról lehetne lekérdezni a hozzájuk tartozó méréseket és képeket. Ezt megoldandó írtam szintén \textsc{Matlab}ben egy függvénycsomagot, mely a kívánt adatokat összegyűjti, majd feltölti őket az adatbázisba. Ezek az adatok három külön adathalmazban találhatók:
+\begin{itemize}
+    \item a kísérletek során a célsejt mérésekor rögzített elektrofiziológiai adatok (.mat kiterjesztés),
+    \item az egyes sejtekről készült képek (.png kiterjesztés),
+    \item a képek mentését időbélyeggel rögzítő naplófájlok (.log kiterjesztés).
+\end{itemize}
+A meglévő adathalmazok elemzése után úgy döntöttünk, hogy létrehozunk egy sémát, amelynek rekordjai a célsejtek, és a hozzájuk tartozó mezők az említett információk lesznek. Ilyen módon a leendő felhasználó csoportosított kvalitatív adatokhoz fér majd hozzá, és lekérdezéseket hajthat végre például egy bizonyos fenotípusú sejteket keresve. Egy ilyen entitás látható a \ref{fig:mongoworkflow}~ábra alsó részén. A legfőbb nehézség az egyazon sejthez tartozó rekordok öszefésülése volt, miközben a sejt, mint entitás egyik adathalmazban sem jelent meg. Ezt a szerkezetet a naplózófájlokból többszintű reguláris kifejezésekkel generáltam. Az algoritmus \textit{starting} fázishoz tartozó képek exportálását rögzítő sorokat keres:
+\begin{verbatim}
+2019-02-14 [...] - Logging image with name: 2019[...]VP_starting.png
+\end{verbatim}
+Az algoritmus további kereséssel megtalálja a következő \textit{starting} eseményt, majd a két időbélyeg között keres rekordokat a másik kettő adathalmazban. Az így összegyűjtött bejegyzéseket az első sejthez rendeli hozzá. Az iteráció végeztével az elkészült adatstruktúrát feltölti az adatbázisba, ahonnan az lekérhető lesz a felhasználók számára.\par
+A plug-inekhez tartozó forráskódok a \href{https://github.com/balintdecsi/THESIS.git}{\textsf{GitHub} fiókom oldalán} érhetőek el.
+
+\end{document}
